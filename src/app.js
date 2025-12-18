@@ -1,32 +1,33 @@
 import { WeatherService } from "./services/weather-service";
- 
+import { formatTemperature, formatTimestamp, formatWindSpeed } from "./utils/formatters";
+
 export class App {
- 
+
     //propriété privé : stocke l'élément DOM racine ou l'app sera rendu
     #root;
- 
+
     //Propriété privée : instannce du service météo (gère les appels API)
     #service;
- 
+
     // propriété privé : etat interne de l'application (loading, erreurs, resultat)
     #state = {
         loading: false,
         error: '',
         lastResult: null
     }
- 
-    constructor(rootElement){
+
+    constructor(rootElement) {
         this.#root = rootElement;
- 
+
         const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
-        if(!apiKey || apiKey === 'votre_clé_d_api'){
+        if (!apiKey || apiKey === 'votre_clé_d_api') {
             console.error("VITE_OPENWEATHER_API_KEY non défini ou invalide")
         }
         //Service dédié aux appels réseau, isolé du rendu
-        this.#service = new  WeatherService(apiKey);
+        this.#service = new WeatherService(apiKey);
     }
- 
-    #render(){
+
+    #render() {
         this.#root.innerHTML = '';
         // contenair principale de la page avec les classes tailewind
         const page = document.createElement("div");
@@ -34,16 +35,16 @@ export class App {
         //carte principale
         const card = document.createElement("div");
         card.className = "rounded-xl border border-border-light bg-bg-primary p-6 shadow-md ";
-        card.innerHTML =`
+        card.innerHTML = `
         <h1 class="mb-2 text-3xl font-bold">Météo</h1>
         <p class="mb-6 text-text-secondary">Cherchez par ville ou par coordonnées géographiques.</p>
         `;
- 
+
         //formulaire
         const form = document.createElement("form");
         form.className = "space-y-6";
         form.addEventListener('submit', this.#handleSubmit.bind(this));
- 
+
         //Section 1 : Recherche par ville
         const citySelection = document.createElement("div");
         citySelection.className = "rounded-lg border-2 border-dashed border-border-light bg-bg-secondary/50 p-5 transition-colors hover:border-primary-500/30";
@@ -59,7 +60,7 @@ export class App {
             <p class="text-xs text-text-muted">Saisissez le nom de la ville pour obtenir la météo</p>
         </div>
         `;
- 
+
         //séparateur visuel "OU"
         const separator = document.createElement("div");
         separator.className = "relative";
@@ -72,7 +73,7 @@ export class App {
         <span class="bg-bg-primary px-4 text-text-muted">OU</span>
         </div>
         `;
- 
+
         //section 2 : Recherche par coordonnées
         const coordsSection = document.createElement("div");
         coordsSection.className = "rounded-lg border-2 border-dashed border-border-light bg-bg-secondary/50 p-5 transition-colors hover:border-primary-500/30";
@@ -95,25 +96,28 @@ export class App {
         <p class="mt-3 text-xs"> Saisissez les coordonnées GPS pour obtenir les informations météorologiques correspondantes.</p>
         `;
 
-        
- 
-        form.append(citySelection,separator,coordsSection)
+
+
+        form.append(citySelection, separator, coordsSection)
 
         // contenaire des boutons
         const actions = document.createElement("div");
         actions.className = "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end ";
-        
+
 
         // bouton secondeaire : effacer
-        const clear= document.createElement("button");
+        const clear = document.createElement("button");
         clear.type = "button";
         clear.className = "flex items-center justify-center gap-2 rounded-lg border border-border-medium bg-white px-6 py-3 text-sm font-semibold text-text-primary transition-all hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 active:scale-95";
-        clear.innerHTML= `
+        clear.innerHTML = `
         <svg class="text-xl" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m14.031 1.888l9.657 9.657l-8.345 8.345l-.27.272H20v2H6.748L.253 15.667zM5.788 12.96l-2.707 2.707l4.495 4.495h4.68l.365-.37z"/></svg> Effacer
 
         `;
 
-        clear.addEventListener('click', () => {console.log("supprimer")});
+        clear.addEventListener('click', () => { 
+            form.reset();
+            this.#setState({ error: '', lastResult: null });
+         });
 
         // bouton principal
         const submit = document.createElement("button");
@@ -121,24 +125,24 @@ export class App {
         submit.className = "group flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-primzry-500/25 transition-all hover:to-primary-700 hover:shadow-lg hover:shadow-primary-500/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0";
         submit.disabled = this.#state.loading;
 
-        if(this.#state.loading){
-            submit.innerHTML= `
+        if (this.#state.loading) {
+            submit.innerHTML = `
                 <svg class="text-2xl" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><circle cx="18" cy="12" r="0" fill="currentColor"><animate attributeName="r" begin=".67" calcMode="spline" dur="1.5s" keySplines="0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8" repeatCount="indefinite" values="0;2;0;0"/></circle><circle cx="12" cy="12" r="0" fill="currentColor"><animate attributeName="r" begin=".33" calcMode="spline" dur="1.5s" keySplines="0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8" repeatCount="indefinite" values="0;2;0;0"/></circle><circle cx="6" cy="12" r="0" fill="currentColor"><animate attributeName="r" begin="0" calcMode="spline" dur="1.5s" keySplines="0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8;0.2 0.2 0.4 0.8" repeatCount="indefinite" values="0;2;0;0"/></circle></svg> Chargement...
             `;
         } else {
-            submit.innerHTML= `
+            submit.innerHTML = `
             <svg class="text-2xl" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10 21v-1m0-16V3m0 6a3 3 0 0 0 0 6m4 5l1.25-2.5L18 18M14 4l1.25 2.5L18 6"/><path d="m17 21l-3-6l1.5-3H22m-5-9l-3 6l1.5 3M2 12h1"/><path d="m20 10l-1.5 2l1.5 2M3.64 18.36l.7-.7m0-11.32l-.7-.7"/></g></svg> Afficher la météo
             `;
         }
-           
-            
-        
-        
+
+
+
+
         actions.append(clear, submit);
         form.append(actions);
 
 
-        card.append(form);
+        card.append(form, this.#renderResults());
         page.append(card);
         this.#root.append(page);
     }
@@ -150,33 +154,33 @@ export class App {
      * 
      */
 
-    async #handleSubmit(event){
+    async #handleSubmit(event) {
         // on desactive le comportement par defaut du formulaire
         event.preventDefault();
         const form = new FormData(event.target);
         const city = form.get('city');
         const lat = form.get('lat');
-        const lon = form.get('lon');    
-        console.log("form data :", {city, lat, lon});
+        const lon = form.get('lon');
+        console.log("form data :", { city, lat, lon });
 
-        if(!city && (!lat || !lon)){
-            this.#setState({ error: 'Veuillez saisir une ville ou des coordonnées valides.',lastResult: null});
+        if (!city && (!lat || !lon)) {
+            this.#setState({ error: 'Veuillez saisir une ville ou des coordonnées valides.', lastResult: null });
             return;
-            
+
         }
-        this.#setState({ loading: true, error: '', lastResult: null});
+        this.#setState({ loading: true, error: '', lastResult: null });
 
         const search = city ? { q: city } : { lat, lon };
         console.log("search params :", search);
         const response = await this.#service.getCurrent(search);
         console.log("response API :", response);
-        
-        if(!response.ok){
-            this.#setState({ loading: false , error: response.error || 'Erreur inconnue'});
+
+        if (!response.ok) {
+            this.#setState({ loading: false, error: response.error || 'Erreur inconnue' });
 
             return;
         }
-        this.#setState({ loading: false, error: '', lastResult: response.data});
+        this.#setState({ loading: false, error: '', lastResult: response.data });
         console.log("etat du state :", this.#state);
     }
 
@@ -184,15 +188,162 @@ export class App {
      * methode pour mettre a jour le state
      * @param {object} next un objet avec les nouvelles valeurs du state
      */
-    #setState(next){
-        this.#state = { ...this.#state, ...next};
+    #setState(next) {
+        this.#state = { ...this.#state, ...next };
         this.#render();
     }
-        
 
- 
-    mount(){
+
+    /**
+     * methode privee cree un bloc metrique reutilisable 
+     * (temperature, humidité, vent, etc.)
+     * 
+     * @param {string} title le label de la metrique
+     * @param {string} content la valeur de la metrique
+     * @return {HTMLElement} l'élément DOM représentant la metrique
+     */
+
+    #renderMetric(title, content) {
+        const block = document.createElement("div");
+        block.className = "grounded-lg border border-border-light bg-bg-secondary p-4";
+        block.innerHTML = `
+        <h4 class="mb-2 text-base font-semibold">${title} : </h4>${content}
+        
+        `;
+        return block;
+    }
+
+    /**
+     *  methode privee : converti les degres (0-360) en direction cardinale (N, NE, E, SE, S, SW, W, NW)
+     * 
+     * @param {number|undefined|null} deg les degres a convertir
+     * @return {string} la direction cardinale correspondante
+     */
+
+    #directionFromDegrees(deg) {
+        if (deg === undefined || deg === null) return "-";
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'Sw', 'W', 'NW', 'N'];
+        const index = Math.round(deg / 45);
+        return directions[index];
+
+
+    }
+
+    /**
+     * methode privee genere et retourne le contenu des résultats météo
+     * 
+     * @return {HTMLElement} l'élément DOM représentant les résultats météo
+     */
+
+    #renderResults() {
+        const imageUrl = "https://openweathermap.org/img/wn";
+        // conteneur principal des résultats
+        const container = document.createElement("div");
+        container.className = "mt-6 grid gap-4";
+
+        if (this.#state.loading) {
+            // message de chargement 
+            container.innerHTML = `
+            <p class="mt-4 text-sm text-text-secondary">Chargement des données météo...</p>
+            `;
+            return container;
+        }
+        // message d'erreur
+        if (this.#state.error) {
+            container.innerHTML = `
+            <div class="rounded-lg border border-error-border bg-error-light text-error py-3 px-6"> ${this.#state.error === "city not found" ? "Ville non trouvée" : this.#state.error}</div>
+            `;
+            return container;
+        }
+        // si lastresul est null 
+        if (!this.#state.lastResult) {
+            container.innerHTML = `
+            <p class="italic text-text-muted">Aucun résultat à afficher.</p>
+            `;
+            return container;
+
+        }
+        // on traite les reponses valides
+        const data = this.#state.lastResult;
+        const weather = data?.weather?.[0];
+        const main = data?.main || {};
+        const wind = data?.wind || {};
+        const sys = data?.sys || {};
+
+        // en tete des résultats
+        const header = document.createElement("div");
+        header.className = "rounded-lg border border-border-light bg-bg-secondary p-4";
+        header.innerHTML = `
+            <div class="flex w-full items-center justify-between">
+                <div>
+                    <h4 class="m-0 text-lg font-semibold">${data?.name || 'ville inconnue'}${sys?.country ? `, ${sys?.country}` : ''}</h4>
+                    <div class="text-text-secondary">${weather?.description || '-'}</div>
+                    
+                    
+                </div>
+                ${weather?.icon ? `<img src="${imageUrl}/${weather.icon}@2x.png" alt="${weather?.description}" width="64" height="64">` : ''}
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+            <span class="inline-flex items-center gap-1.5 rounded-full border-primary-500 bg-white px-2.5 py-1.5 text-xs text-primary-700"> temp: ${formatTemperature(main?.temp)}</span>
+
+
+            <span class="inline-flex items-center gap-1.5 rounded-full border-border-medium bg-white px-2.5 py-1.5 text-xs"> ressenti: ${formatTemperature(main?.feels_like)}</span>
+
+
+            <span class="inline-flex items-center gap-1.5 rounded-full border-success bg-white px-2.5 py-1.5 text-xs text-success-dark">humidite: ${main?.humidity ?? '-'}</span>
+
+
+            <span class="inline-flex items-center gap-1.5 rounded-full border-warning bg-white px-2.5 py-1.5 text-xs text-warning-dark">pression: ${main?.pressure ?? '-'}hPa</span>
+            </div>
+        `;
+        // grille responsive des métriques
+
+        const grid = document.createElement("div");
+        grid.className = "grid grid-cols-1 gap-4 md:grid-cols-2";
+
+        grid.appendChild(this.#renderMetric("temperatures", `
+                <div class="text-text-secondary">Min:${formatTemperature(main?.temp_min)} / Max: ${formatTemperature(main?.temp_max)}</div>
+                `))
+
+        grid.appendChild(this.#renderMetric("Vitesse du vent", `
+                    <div class="text-text-secondary">vitesse: ${formatWindSpeed(wind?.speed)}</div>
+                    <div class="text-text-secondary">Direction : ${this.#directionFromDegrees(wind?.deg)}</div>
+                    <div class="text-text-secondary">Rafales: ${formatWindSpeed(wind?.gust)}</div>
+                    `))
+
+        grid.appendChild(this.#renderMetric("Visibilité", `
+                <div class="text-text-secondary">${(data?.visibility ?? 0) / 1000} km</div>
+                
+                `))
+
+        grid.appendChild(this.#renderMetric("Soleil", `
+                <div class="text-text-secondary">Lever: ${formatTimestamp(sys?.sunrise)}</div>
+                <div class="text-text-secondary">Coucher : ${formatTimestamp(sys?.sunset)}</div>
+                
+                `))
+
+
+        if (data?.rain?.['1h'] || data?.snow?.['1h']) {
+            const type = data?.rain ? 'Pluie' : 'Neige';
+            const amount = data?.rain?.['1h'] || data?.snow?.['1h'];
+            grid.appendChild(this.#renderMetric("Precipitation", `
+                <div class="text-text-secondary">${type}(1h): ${amount} mm</div>
+                
+                
+                `))
+
+        }
+
+
+
+
+
+
+        container.append(header, grid);
+        return container;
+    }
+
+    mount() {
         this.#render();
     }
 }
- 
